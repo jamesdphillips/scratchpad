@@ -1,7 +1,10 @@
+type Thunk<Value> = () => Value;
+type SetFn<Value> = (_: Value) => void;
+
 interface Variable<
   Value,
-  Getter extends () => Value = () => Value,
-  Setter extends (_: Value) => void = (_: Value) => void,
+  Getter extends () => Value = Thunk<Value>,
+  Setter extends (_: Value) => void = SetFn<Value>,
 > {
   get: Getter;
   set: Setter;
@@ -42,38 +45,19 @@ type BMap<M extends Mapper<From, To>, From, To> = M & {
 
 const href = Symbol("href");
 
-type Hrefable<T extends Function> = T & {
-  [href]: T;
+type Hrefable<Fn extends (...any) => any, Params extends Parameters<Fn> = Parameters<Fn>> = Fn & {
+  [href]: (...Params) => URL;
 }
 
-const v: Variable<URLSearchParams>;
-
-interface HrefableVariable<T> {
-  get(): T
-  set: Hrefable<(_: T) => void>;
+interface HrefableVariable<T> extends Variable<T> {
+  set: Hrefable<Variable<T>["set"]>;
 }
+
+// const v: HrefableVariable<URLSearchParams> = {} as any;
+// const f = v.set[href](new URLSearchParams("?123"));
 
 // const y: HrefableVariable<URLSearchParams>;
 // const z = y.set[href];
-
-function toHrefableVariable(sdf: string): HrefableVariable<URLSearchParams> {
-  return {};
-}
-
-function toVariable(sdf: string): HrefableVariable<URLSearchParams> {
-  return {};
-}
-
-export function create<
-  Value,
-  Getter extends () => Value = () => Value,
-  Setter extends (_: Value) => void = (_: Value) => void,
->(get: Getter, set: Setter): Variable<Value, Getter, Setter> {
-  return {
-    get,
-    set,
-  };
-}
 
 export function local<T>(impl: T = (0 as any)): Variable<T> {
   return {
@@ -88,7 +72,86 @@ interface Locationable {
   location: Location
 }
 export function location(impl: Locationable = window): Variable<URL> {
-
+  return {
+    get() {
+      return new URL (impl.location.toString());
+    },
+    set(url: URL) {
+      impl.location.replace(url.toString());
+    }
+  };
 }
 
-function useURLSearchParams((search: ) => );
+// const num: { one: number } = { one: 1 };
+// const myVar = extract(num, "one");
+
+export function extract<Obj extends object, Prop extends keyof Obj>(obj: Obj, prop: Prop): Variable<Obj[Prop]> {
+  return Object.getOwnPropertyDescriptor(obj, prop) as Variable<Obj[Prop]>;
+}
+
+export function defineProperty<T, Target extends object, Props extends PropertyKey, >(target: Target, prop: Props, impl: Variable<T>): Target & { [typeof prop]: T } {
+  return Object.defineProperty(target, prop, impl);
+}
+
+// const x = location();
+// const y = Object.defineProperty(x, "test", x);
+// const z = defineProperty(x, "test", x);
+
+type Proxy<T> = (_: T) => T;
+
+export function tag<T extends (...any) => any, Params extends Parameters<T>>(fn: T, impl: (...Params) => URL): Hrefable<T> {
+  return {
+    ...fn,
+    [href]: impl,
+  }
+}
+
+function tap<V>(fn: (_: V) => any) {
+  return (v: V) => {
+    fn(v);
+    return v;
+  }
+}
+
+function hrefify<T extends URLSearchParams>(target: Variable<T>, url: Thunk<URL>): HrefableVariable<T> {
+  const orig = {
+    get: target.get,
+    set: target.set,
+  }
+  return defineProperty(target, "set", tag(target.set, (...args: any) => {
+      const current = tap((url: URL) => url.search = v.get().toString())(url());
+
+      // 1. get current value
+      // 2. swap the target impl to mock
+      // 3. run operation on mock
+      const mock = local(orig.get());
+      // 4. apply results to current and return result
+      current.search = mock.get().toString();
+  }));
+}
+
+/**
+ * The translator takes one type and replaces it with another
+ * 
+ * - translator needs to take the bidirectional mapping
+ * - we can't lose any properties associated with the input, eg. Hrefable<>
+ */
+
+function logger<T extends Variable<any>>(v: T): T {
+  v.get = () => tap((v: T['get']) => console.log(v))(v.get());
+  v.set = (val: T['set']) => {
+    console.log(val);
+    v.set(val);
+  }
+  return v;
+}
+
+const a: HrefableVariable<URLSearchParams> = null;
+const b = logger(a);
+
+
+function useURLSearchParams(): HrefableVariable<URLSearchParams> {
+  // connect to react-router, et al.
+}
+
+
