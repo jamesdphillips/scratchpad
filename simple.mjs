@@ -1,9 +1,11 @@
 class Simple extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({ mode: "closed" });
-    this.shadowRoot.innerHTML = "<span>simple made easy</span>";
+
+    const shadow = this.attachShadow({ mode: "closed" });
+    shadow.innerHTML = "simple";
   }
 }
 
 export default Simple;
+

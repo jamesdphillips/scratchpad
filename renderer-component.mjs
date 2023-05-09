@@ -1,8 +1,22 @@
 const sym = "render-target";
-const registry = new CustomElementRegistry();
+
+// simply put I want to avoid collisions and the custom registry polyfill
+// did not appear to work!
+class Counter {
+  #iterations = 0;
+
+  get current() {
+    return this.#iterations;
+  }
+
+  incr() {
+    this.#iterations++;
+  }
+}
 
 class Renderer extends HTMLElement {
-  instanceCount = 0;
+  static instanceCounter = new Counter();
+  counter = new Counter();
 
   static get observedAttributes() {
     return ["ref"];
@@ -10,28 +24,26 @@ class Renderer extends HTMLElement {
 
   constructor() {
     super();
+    Renderer.instanceCounter.incr();
+    this.attachShadow({ mode: "open" });
+  }
 
-    // use a clean registry to avoid any conflicts
-    this.attachShadow({ mode: "open", registry });
-
-    // Render given component
-    // this.el = this.shadowRoot.createElement(this.#name);
-    // this.#render();
+  get #instanceCount() {
+    return Renderer.instanceCounter.current;
   }
 
   get #name() {
-    return [sym, this.instanceCount.toString()].join("-v");
+    return `${sym}-v${this.#instanceCount}.${this.counter.current}`;
   }
 
   async #render() {
     const { default: Component } = await import(this.attributes.ref.value);
-    registry.define(this.#name, Component);
-    // this.el.tagName = this.#name;
+    customElements.define(this.#name, Component);
     this.shadowRoot.innerHTML = `<${this.#name} />`;
   }
 
   attributeChangedCallback() {
-    this.instanceCount++;
+    this.counter.incr();
     this.#render();
   }
 }
