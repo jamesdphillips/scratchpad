@@ -1,6 +1,27 @@
 import { SetFn, GetFn } from "../core/en";
 import { Mapping } from "../Mapping/en";
-import { Reversible, tag, unwrap } from "../Reversible/en";
+import * as Reversible from "../Reversible/en";
+import * as Dictionary from "../Dictionary/en";
+
+/**
+ * Given a value and a preset, one of the two is selected based on whether
+ * the input value is falsey.
+ *
+ * @example
+ *
+ * const entry = Dictionary.rerootList("one")(new URLSearchParams());
+ * entry.get();
+ *
+ * @param input
+ * @param preset
+ * @return input | preset
+ */
+function preset<T>(val: T): (x: undefined) => typeof val;
+function preset<T>(val: T): (x: T) => T {
+  return (x) => x || val;
+}
+
+[Dictionary.rerootList("preset"), transform(), preset("")];
 
 export interface Variable<
   Value,
@@ -126,18 +147,35 @@ export function logger<T extends Variable<any>>(v: T): T {
 //   // connect to react-router, et al.
 // }
 
-export function transfom<T, M>(
-  v: Variable<T>,
-  bmap: Reversible<Mapping<T, M>>
-): Omit<typeof v, "get" | "set"> & Variable<M> {
-  return {
-    ...v,
-    get: Object.assign({}, v.get, () => bmap(v.get())),
-    set: Object.assign({}, v.set, (val) => v.set(unwrap(bmap)(val))),
-  };
-}
+type Transformed<V, M> = Omit<V, "get" | "set"> & Variable<M>
 
+/**
+ * Transforms a given variable using a bi-drectional mapping.
+ * 
+ * @example
+ * 
+ * const Variable<Location> a = Var.location();
+ * let b = transform(a, (c) => c.path);
+ * 
+ * const Variable<URLSearchParams> a = Var.local(new URLSearchParams);
+ * let b = transform(a, Reversible.tag(c => c.entries(), d => new URLSearchParams(...d)));
+ * 
+ * @param bmap 
+ * @returns Mapping<Variable>
+ */
+export const transform =
+  <T, M>(bmap: Reversible.Maybe<Mapping<T, M>>) =>
+  (v: Variable<T>) =>
+    ({
+      ...v,
+      get: Object.assign({}, v.get, () => bmap(v.get())),
+      set: Object.assign({}, v.set, (val) => {
+        const reverse = Reversible.unwrap(bmap);
+        const reversed = reverse ? reverse(val) : v.get();
+        v.set(reversed);
+      }),
+    } as Transformed<typeof v, M>);
 
-const t0: Mapping<string, number> = (str: string) => parseInt(str, 10);
+const t0: Mapping<string, number> = (n: string) => parseInt(n, 10);
 const t1: Mapping<number, string> = (n: number) => n.toString();
-const t2 = tag(t0, t1);
+const t2 = Reversible.tag(t0, t1);

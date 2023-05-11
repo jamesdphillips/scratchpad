@@ -1,4 +1,4 @@
-import * as Variable from "../Var/en";
+import { Variable, local } from "../Var/en";
 import * as Hrefable from "../Hrefable/en";
 import { Thunk } from "../core/en";
 
@@ -43,23 +43,15 @@ export function toURLSearchProperties(
   }) as URLSearchProperties;
 }
 
-function curry<T extends object>(target: T, arg: any): CurryInterface<T> {
-  return new Proxy(target, {
-    get(target, prop) {
-      return target[prop](arg)(arg, ...arguments);
-    },
-  }) as CurryInterface<T>;
-}
-
 export function hrefify<T extends URLSearchParams>(
-  target: Variable.Iface<T>,
+  target: Variable<T>,
   makeURL: Thunk<URL>
 ) {
   const orig = {
     get: target.get,
     set: target.set,
   };
-  let mock: Variable.Iface<URLSearchParams> | null = null;
+  let mock: Variable<URLSearchParams> | null = null;
   const setter: (typeof target)["set"] = (val) => {
     mock ? mock.set(val) : orig.set(val);
   };
@@ -69,7 +61,7 @@ export function hrefify<T extends URLSearchParams>(
     url.search = orig.get().toString();
 
     // 2. swap the target impl to mock
-    mock = Variable.local(url.searchParams);
+    mock = local(url.searchParams);
 
     // 3. run operation on mock
     receiver(...args);

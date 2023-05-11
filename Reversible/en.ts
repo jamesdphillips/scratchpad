@@ -25,7 +25,7 @@ export const symbol = Symbol();
  *   Reversable.reverse(c)(10); // String(10)
  * );
  */
-export type Reversible<T extends AnyFunc> = T & {
+export type Iface<T extends AnyFunc> = T & {
   [symbol]: Reversed<T>;
 };
 
@@ -67,7 +67,7 @@ type Reversed<Fn extends AnyFunc> = (_: ReturnType<Fn>) => Parameters<Fn>[0];
  */
 export function tag<T extends AnyFunc>(target: T, fn: Reversed<T>) {
   target[symbol] = fn;
-  return target as Reversible<T>;
+  return target as Iface<T>;
 }
 
 /**
