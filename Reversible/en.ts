@@ -63,7 +63,7 @@ type Reversed<Fn extends AnyFunc> = (_: ReturnType<Fn>) => Parameters<Fn>[0];
  *
  * @param target function to tag
  * @param fn should implement the reverse operation as the target
- * @returns Reverable<typeof target>
+ * @returns Reversible<typeof target>
  */
 export function tag<T extends AnyFunc>(target: T, fn: Reversed<T>) {
   target[symbol] = fn;
@@ -85,7 +85,7 @@ export function unwrap<T extends any>(target: Tagged<T>): T {
   return target[symbol];
 }
 
-// const x: Maybe<() => string> = () => "hello";
-// const y: Reversible<() => string> = tag(() => "world", (str: string) => []);
-// unwrap(x);
-// unwrap(y);
+// const x: Reversible.Maybe<() => string> = () => "hello";
+// const y: Reversible.Iface<() => string> = tag(() => "world", (str: string) => []);
+// Reversible.get(x);
+// Reversible.get(y);

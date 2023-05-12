@@ -1,6 +1,7 @@
 import { Variable, local } from "../Var/en";
 import * as Hrefable from "../Hrefable/en";
 import { Thunk } from "../core/en";
+import * as Object from "../Object/en";
 
 type OmitFirstArg<T> = T extends (arg1: any, ...args: infer R) => infer U
   ? (...args: R) => U
@@ -26,7 +27,7 @@ export function toURLSearchParam(
   params: Pick<URLSearchParams, URLSearchParamsCurriableProperties>,
   property: PropertyKey
 ): URLSearchParam {
-  return curry(params, property);
+  return Object.curry(params, property);
 }
 
 export interface URLSearchProperties {
@@ -74,5 +75,5 @@ export function hrefify<T extends URLSearchParams>(
     // TODO: should figure out the issue with the type definition here
   }) as any;
 
-  return target as (typeof target & Hrefable.Var<T>);
+  return target as typeof target & Hrefable.Var<T>;
 }
